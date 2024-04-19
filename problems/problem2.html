@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>CPSC 487/587</title>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/lil-gui@0.19.1/dist/lil-gui.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/10.3.0/math.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/quaternion@1.5.1/quaternion.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/numeric@1.2.6/numeric-1.2.6.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/stats.js@0.17.0/build/stats.min.js"></script>
+    <script type="importmap">
+        {
+            "imports": {
+              "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+              "three/": "https://unpkg.com/three@0.160.0/"
+            }
+        }
+    </script>
+</head>
+<body>
+<script type="module">
+    import {get_default_lil_gui, ThreeEngine, refresh_displays} from "../js/utils/utils_three.js";
+
+
+    // todo: create a visualization that demonstrates your knowledge of quaternions.  This is intentionally
+    // todo: open-ended.  Be as creative as you want, or feel free to recreate any of the visualizations
+    // todo: found in Section 3.3.
+
+    let engine = ThreeEngine.new_default_3d();
+    let gui = get_default_lil_gui();
+
+    let settings = {
+        display_quat: true,
+        display_wf: true,
+        w: 1,
+        x: 0,
+        y: 0,
+        z: 0,
+        norm: 1
+    }
+
+    let actions = {reset: () => {
+        settings.w = 1;
+        settings.x = 0;
+        settings.y = 0;
+        settings.z = 0;
+        refresh_displays(gui)
+     }
+    }
+
+    engine.add_suzanne_monkey_as_mesh_object(0x00eeff);
+    engine.toggle_mesh_object_visibility(0);
+    let points = engine.get_local_vertex_positions_of_mesh_object_wireframe(0);
+
+    gui.add(settings, "display_quat").name("display quaternions");
+    gui.add(settings, "display_wf").name("display wireframe");
+    gui.add(settings, 'w', -2, 2);
+    gui.add(settings, 'x', -2, 2);
+    gui.add(settings, 'y', -2, 2);
+    gui.add(settings, 'z', -2, 2);
+    gui.add(settings, 'norm').disable();
+    gui.add(actions, 'reset');
+
+    function mul_quaternions(q1, q2) {
+        let w1 = q1[0][0];
+        let w2 = q2[0][0];
+        let x1 = q1[1][0];
+        let x2 = q2[1][0];
+        let y1 = q1[2][0];
+        let y2 = q2[2][0];
+        let z1 = q1[3][0];
+        let z2 = q2[3][0];
+
+        return [[w1*w2 - x1*x2 - y1*y2 - z1*z2],
+            [w1*x2 + x1*w2 + y1*z2 - z1*y2],
+            [w1*y2 - x1*z2 + y1*w2 + z1*x2],
+            [w1*z2 + x1*y2 - y1*x2 + z1*w2]];
+    }
+
+    engine.animation_loop(function() {
+        let q_vector = [[settings.w],[settings.x],[settings.y],[settings.z]];
+        let points_new = [];
+        let quats_new = [];
+        points.forEach(point => {
+            let q_point = [[0], [point[0]], [point[1]], [point[2]]];
+            let new_quat = mul_quaternions(q_vector, q_point);
+            quats_new.push(new_quat);
+            let new_point = [new_quat[1][0], new_quat[2][0], new_quat[3][0]];
+            points_new.push(new_point);
+        });
+        engine.update_vertex_positions_of_mesh_object_wireframe(0, points_new);
+
+        if(settings.display_quat) {
+            for (let i = 0; i < quats_new.length; i++) {
+                engine.draw_debug_sphere(points_new[i], quats_new[i][0][0] / 10, 0x000000, 1)
+            }
+        }
+
+        engine.set_mesh_object_wireframe_visibility(0, settings.display_wf);
+
+        settings.norm = (math.sqrt(settings.w**2 + settings.x**2 + settings.y**2 + settings.z**2));
+        refresh_displays(gui);
+    });
+
+
+</script>
+</body>
+</html>
